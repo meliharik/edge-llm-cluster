@@ -21,8 +21,8 @@ The riskiest assumption tested first: can we split an MLX model by layer range a
 - [x] Control protocol: hello, assignment, metrics, goodbye (`ControlMessage`)
 - [x] Language agnostic protocol specification ([PROTOCOL.md](PROTOCOL.md))
 - [x] Cluster state registry and web dashboard (`EdgeLLMCoordinator`, `edge-coordinator`)
-- [ ] `edge-worker` CLI: load a shard, serve it over a `FrameConnection` (two processes on one Mac first, then two machines)
-- [ ] Wire the coordinator chat loop to remote shards through the metrics reporting path
+- [x] `edge-worker` CLI: discover the coordinator, announce, load the assigned shard (downloading weights if needed), serve inference frames, report metrics
+- [ ] Coordinator chat loop: send assignments, relay frames between stages, stream the answer
 - [ ] End to end: Mac plus a second device, full answer streamed, visible live in the dashboard
 - [ ] iOS worker app skeleton (SwiftUI, Info.plist local network keys, increased memory entitlement)
 

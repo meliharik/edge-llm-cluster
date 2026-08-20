@@ -60,7 +60,7 @@ struct EdgeCoordinatorCLI {
             exit(1)
         }
 
-        dispatchMain()
+        RunLoop.main.run()
     }
 
     // MARK: - Demo data

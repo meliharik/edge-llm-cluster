@@ -36,7 +36,7 @@ All integers are little endian.
 | 0 | 4 | magic | ASCII `ELC1` |
 | 4 | 1 | version | currently `1` |
 | 5 | 1 | kind | `0` hiddenState, `1` token, `2` control |
-| 6 | 1 | dtype | `0` float16, `1` float32, `2` bfloat16 |
+| 6 | 1 | dtype | `0` float16, `1` float32, `2` bfloat16, `3` int32 |
 | 7 | 1 | rank | number of shape dimensions, at most 8 |
 | 8 | 4 | seqPos | sequence position of the first element |
 | 12 | 2 | layerStart | producing shard's first layer |
@@ -48,7 +48,7 @@ All integers are little endian.
 Per kind rules:
 
 - **hiddenState (0)**: payload is the tensor in row major order using the declared dtype. `payloadLength` must equal `product(shape) * bytesPerElement(dtype)`; receivers must verify this. Shape is `[batch, length, hidden]`, with `batch = 1` in version 1.
-- **token (1)**: payload is a single int32 token id. `seqPos` is the position the token was sampled at.
+- **token (1)**: payload is little endian int32 token ids with dtype `3` and shape `[1, count]`. The size rule above applies. A prompt going to the first shard is one frame with `count = prompt length`; a sampled token coming back is `count = 1` with `seqPos` set to the position it was sampled at.
 - **control (2)**: payload is a UTF-8 JSON document, defined in the next section. Tensor fields (`dtype`, `shape`, `layerStart`, `layerEnd`, `seqPos`) are ignored on control frames.
 
 ## 3. Control messages
@@ -94,6 +94,14 @@ The worker must load layers `layerStart` to `layerEnd - 1` of the named model. T
 }}}
 ```
 
+### reset (coordinator to worker, before each new generation)
+
+```json
+{ "reset": {} }
+```
+
+The worker clears its KV caches and treats the next input as the start of a sequence at position zero.
+
 ### goodbye (either direction, before an orderly disconnect)
 
 ```json
@@ -104,12 +112,16 @@ A worker that stops sending metrics for 10 seconds is shown as offline in the da
 
 ## 4. Pipeline data flow
 
-Once every worker is loaded and ready:
+Version 1 uses a star topology: every frame passes through the coordinator, which relays between stages. Workers never dial each other. This costs one extra hop per boundary but keeps workers trivial (one connection, request in, response out); direct worker to worker chaining is a planned optimization for a later protocol version.
 
-1. The coordinator tokenizes the prompt and sends the first shard a hiddenState frame containing token embeddings, or, when the coordinator itself runs the first shard, starts locally. Version 1 keeps tokenization and sampling on the coordinator side of the chain.
-2. Each worker runs its layers and sends the resulting hidden state to the next stage as a hiddenState frame. KV caches stay on the worker; they are never transmitted.
-3. The last shard produces logits; the sampled token id returns to the first stage as a token frame, and the next decode step begins.
-4. Prefill is one pass with `length = prompt length`; decode steps have `length = 1`.
+One generation looks like this:
+
+1. The coordinator sends every worker `reset`, then tokenizes the prompt.
+2. Prefill: the coordinator sends the first shard a token frame with the whole prompt (`shape [1, prompt length]`). The worker embeds it, runs its layers and replies with a hiddenState frame on the same connection. The coordinator relays that to the next shard, and so on down the chain.
+3. The worker holding the last shard applies the head and replies with a token frame containing the greedy (argmax) token id. Temperature sampling is a later protocol revision.
+4. Decode: the coordinator sends the sampled token back to the first shard as a token frame with `count = 1`, and step 2 repeats with `length = 1` until an end of sequence token or the token limit.
+
+KV caches stay on the worker between frames of one generation; they are never transmitted. `reset` is the only cache boundary.
 
 Numerics: hidden states are exchanged as float16 in version 1. Workers compute in whatever precision their runtime uses internally, but must accept float16 input and emit float16 output at shard boundaries.
 

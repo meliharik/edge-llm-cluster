@@ -16,6 +16,10 @@ public enum ControlMessage: Codable, Equatable, Sendable {
     /// Periodic worker report used by the coordinator and the dashboard.
     case metrics(DeviceMetrics)
 
+    /// Sent by the coordinator before a new generation: the worker clears
+    /// its KV caches and starts the sequence from position zero.
+    case reset
+
     /// Sent by either side before an orderly disconnect.
     case goodbye
 

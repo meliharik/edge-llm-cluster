@@ -13,6 +13,7 @@ let package = Package(
         .library(name: "EdgeLLMCoordinator", targets: ["EdgeLLMCoordinator"]),
         .executable(name: "pipeline-proof", targets: ["PipelineProof"]),
         .executable(name: "edge-coordinator", targets: ["EdgeCoordinatorCLI"]),
+        .executable(name: "edge-worker", targets: ["EdgeWorkerCLI"]),
     ],
     dependencies: [
         // Pinned exactly: model/shard code mirrors the internals of this release.
@@ -45,6 +46,18 @@ let package = Package(
         .executableTarget(
             name: "EdgeCoordinatorCLI",
             dependencies: ["EdgeLLMKit", "EdgeLLMTransport", "EdgeLLMCoordinator"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
+            name: "EdgeWorkerCLI",
+            dependencies: [
+                "EdgeLLMKit",
+                "EdgeLLMTransport",
+                .product(name: "MLX", package: "mlx-swift"),
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+                .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
+                .product(name: "HuggingFace", package: "swift-huggingface"),
+            ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(

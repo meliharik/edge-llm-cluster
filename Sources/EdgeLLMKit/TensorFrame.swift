@@ -9,7 +9,7 @@ import Foundation
 /// 0       4     magic "ELC1"
 /// 4       1     version (currently 1)
 /// 5       1     kind (0 = hiddenState, 1 = token, 2 = control)
-/// 6       1     dtype (0 = float16, 1 = float32, 2 = bfloat16)
+/// 6       1     dtype (0 = float16, 1 = float32, 2 = bfloat16, 3 = int32)
 /// 7       1     rank (number of dimensions, max 8)
 /// 8       4     seqPos     sequence position of the first element
 /// 12      2     layerStart producing shard's first layer
@@ -33,11 +33,12 @@ public struct TensorFrame: Equatable, Sendable {
         case float16 = 0
         case float32 = 1
         case bfloat16 = 2
+        case int32 = 3
 
         public var bytesPerElement: Int {
             switch self {
             case .float16, .bfloat16: return 2
-            case .float32: return 4
+            case .float32, .int32: return 4
             }
         }
     }
@@ -135,7 +136,7 @@ public struct TensorFrame: Equatable, Sendable {
         }
 
         let expected = shape.reduce(1, *) * dtype.bytesPerElement
-        if kind == .hiddenState, expected != payload.count {
+        if kind == .hiddenState || kind == .token, expected != payload.count {
             throw DecodeError.payloadSizeMismatch(expected: expected, actual: payload.count)
         }
 
@@ -143,6 +144,32 @@ public struct TensorFrame: Equatable, Sendable {
             kind: kind, dtype: dtype, seqPos: Int(seqPos),
             layerStart: Int(layerStart), layerEnd: Int(layerEnd),
             shape: shape, payload: Data(payload))
+    }
+}
+
+// MARK: - Token frames
+
+extension TensorFrame {
+
+    /// Wrap token ids for the wire, shape `[1, count]`. A single sampled
+    /// token is simply `tokens: [id]` at its position.
+    public init(tokens: [Int32], seqPos: Int) {
+        precondition(!tokens.isEmpty)
+        var payload = Data(capacity: tokens.count * 4)
+        for token in tokens {
+            payload.appendLE(token)
+        }
+        self.init(
+            kind: .token, dtype: .int32, seqPos: seqPos,
+            layerStart: 0, layerEnd: 0, shape: [1, tokens.count], payload: payload)
+    }
+
+    /// The token ids carried by this frame, or nil if it is not a token frame.
+    public func tokenIDs() -> [Int32]? {
+        guard kind == .token else { return nil }
+        return payload.withUnsafeBytes { raw in
+            raw.bindMemory(to: Int32.self).map { Int32(littleEndian: $0) }
+        }
     }
 }
 

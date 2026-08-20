@@ -25,6 +25,28 @@ final class ControlMessageTests: XCTestCase {
         XCTAssertEqual(try decoded.controlMessage(), assignment)
     }
 
+    func testResetRoundTrips() throws {
+        let frame = try TensorFrame.control(.reset)
+        let decoded = try TensorFrame.decode(frame.encoded())
+        XCTAssertEqual(try decoded.controlMessage(), .reset)
+    }
+
+    func testTokenFrameRoundTrips() throws {
+        let frame = TensorFrame(tokens: [151644, 872, 198], seqPos: 0)
+        XCTAssertEqual(frame.shape, [1, 3])
+        XCTAssertEqual(frame.dtype, .int32)
+
+        let decoded = try TensorFrame.decode(frame.encoded())
+        XCTAssertEqual(decoded.tokenIDs(), [151644, 872, 198])
+        XCTAssertNil(try decoded.controlMessage())
+    }
+
+    func testTokenFrameSizeIsValidated() {
+        var frame = TensorFrame(tokens: [1, 2, 3], seqPos: 0)
+        frame.shape = [1, 4]
+        XCTAssertThrowsError(try TensorFrame.decode(frame.encoded()))
+    }
+
     func testHiddenStateFrameIsNotAControlMessage() throws {
         let frame = TensorFrame(
             kind: .hiddenState, dtype: .float16, seqPos: 0,
