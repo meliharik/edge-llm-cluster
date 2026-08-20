@@ -136,7 +136,7 @@ final class WorkerSession {
     }
 
     private func handle(_ frame: TensorFrame) {
-        guard let message = try? frame.controlMessage(), let message else { return }
+        guard let message = try? frame.controlMessage() else { return }
         switch message {
         case .hello(let info):
             deviceID = info.id
