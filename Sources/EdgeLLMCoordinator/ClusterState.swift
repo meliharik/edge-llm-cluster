@@ -77,7 +77,7 @@ public final class ClusterState: @unchecked Sendable {
             device.millisecondsPerToken = metrics.millisecondsPerToken
             device.lastSeen = now
             devices[metrics.id] = device
-        case .goodbye:
+        case .reset, .goodbye:
             break
         }
     }
