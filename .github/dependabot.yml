@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "swift"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # mlx-swift-lm is pinned exactly on purpose: EdgeLLMKit mirrors that
+    # release's internals. Bump it deliberately, not automatically.
+    ignore:
+      - dependency-name: "mlx-swift-lm"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
