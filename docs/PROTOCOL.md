@@ -84,6 +84,14 @@ Control payloads are JSON objects encoding one of the following messages. The en
 
 The worker must load layers `layerStart` to `layerEnd - 1` of the named model. The first shard (`layerStart == 0`) also owns the token embedding; the last shard (`layerEnd == totalLayers`) owns the final norm and the output head. `nextWorker` is the id of the next pipeline stage, empty for the last shard.
 
+### ready (worker to coordinator, once its shard is loaded)
+
+```json
+{ "ready": { "_0": { "id": "pixel-8-a1b2" } } }
+```
+
+Sent when the assigned layer range is loaded and the worker can serve inference frames, and again right after a reconnect if the shard is still resident. The coordinator starts generation only after every assigned worker has reported ready.
+
 ### metrics (worker to coordinator, periodic, suggested every 2 to 5 seconds)
 
 ```json
@@ -114,7 +122,7 @@ A worker that stops sending metrics for 10 seconds is shown as offline in the da
 
 Version 1 uses a star topology: every frame passes through the coordinator, which relays between stages. Workers never dial each other. This costs one extra hop per boundary but keeps workers trivial (one connection, request in, response out); direct worker to worker chaining is a planned optimization for a later protocol version.
 
-One generation looks like this:
+One generation looks like this (it begins only after every assigned worker has sent `ready`):
 
 1. The coordinator sends every worker `reset`, then tokenizes the prompt.
 2. Prefill: the coordinator sends the first shard a token frame with the whole prompt (`shape [1, prompt length]`). The worker embeds it, runs its layers and replies with a hiddenState frame on the same connection. The coordinator relays that to the next shard, and so on down the chain.

@@ -2,22 +2,33 @@ import EdgeLLMCoordinator
 import EdgeLLMKit
 import EdgeLLMTransport
 import Foundation
+import HuggingFace
+import MLXHuggingFace
+import MLXLMCommon
+import Tokenizers
 
-/// Runs the cluster coordinator: advertises the Bonjour service, accepts
-/// workers from any platform, tracks their state, and serves the web
-/// dashboard.
+/// Runs the cluster coordinator: advertises the service, accepts workers
+/// from any platform, serves the web dashboard, and drives the chat loop
+/// across the connected shards.
 ///
-///   edge-coordinator [--port 8080] [--name <cluster name>] [--demo]
+///   edge-coordinator [--model <hf repo>] [--min-workers <n>]
+///                    [--max-tokens <n>] [--port 8080] [--name <name>]
+///                    [--demo]
 ///
-/// With --demo the state is seeded with simulated devices so the dashboard
-/// can be exercised without any workers running.
+/// With --demo the dashboard is served with simulated devices and no chat
+/// loop runs. Otherwise the coordinator waits for `--min-workers` workers,
+/// assigns layer ranges proportional to their memory, waits for every shard
+/// to load, and then reads prompts from stdin, streaming answers back.
 @main
 struct EdgeCoordinatorCLI {
 
-    static func main() {
+    static func main() async {
         var port: UInt16 = 8080
         var name = Host.current().localizedName ?? "coordinator"
         var demo = false
+        var model = "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+        var minWorkers = 1
+        var maxTokens = 256
 
         var iterator = ProcessInfo.processInfo.arguments.dropFirst().makeIterator()
         while let argument = iterator.next() {
@@ -25,8 +36,15 @@ struct EdgeCoordinatorCLI {
             case "--port": port = iterator.next().flatMap { UInt16($0) } ?? port
             case "--name": name = iterator.next() ?? name
             case "--demo": demo = true
+            case "--model": model = iterator.next() ?? model
+            case "--min-workers": minWorkers = iterator.next().flatMap { Int($0) } ?? minWorkers
+            case "--max-tokens": maxTokens = iterator.next().flatMap { Int($0) } ?? maxTokens
             case "--help", "-h":
-                print("usage: edge-coordinator [--port 8080] [--name <name>] [--demo]")
+                print("""
+                usage: edge-coordinator [--model <hf repo>] [--min-workers <n>]
+                                        [--max-tokens <n>] [--port 8080]
+                                        [--name <name>] [--demo]
+                """)
                 return
             default:
                 print("unknown argument: \(argument) (see --help)")
@@ -48,19 +66,103 @@ struct EdgeCoordinatorCLI {
             exit(1)
         }
 
+        let registry = WorkerRegistry()
         do {
             let advertiser = try PeerAdvertiser(name: name)
             advertiser.newConnectionHandler = { connection in
-                WorkerSession(connection: connection, state: state).run()
+                let handle = WorkerHandle(connection: connection, state: state)
+                handle.onHello = { handle in
+                    guard let info = handle.info else { return }
+                    registry.add(handle)
+                    print("worker joined: \(info.name) [\(info.platform)/\(info.runtime)]")
+                }
+                handle.onClose = { handle in
+                    registry.remove(handle)
+                    if let info = handle.info {
+                        print("worker left: \(info.name)")
+                    }
+                }
+                handle.start()
             }
             advertiser.start()
-            print("advertising \(edgeLLMServiceType) as \"\(name)\", waiting for workers")
+            print("advertising \(edgeLLMServiceType) as \"\(name)\"")
         } catch {
-            print("could not start the Bonjour listener: \(error)")
+            print("could not start the listener: \(error)")
             exit(1)
         }
 
-        RunLoop.main.run()
+        if demo {
+            RunLoop.main.run()
+            return
+        }
+
+        await runChat(
+            state: state, registry: registry, model: model,
+            minWorkers: minWorkers, maxTokens: maxTokens)
+    }
+
+    // MARK: - Chat loop
+
+    static func runChat(
+        state: ClusterState, registry: WorkerRegistry,
+        model: String, minWorkers: Int, maxTokens: Int
+    ) async {
+        do {
+            print("fetching tokenizer and configuration for \(model) …")
+            let directory = try await #hubDownloader().download(
+                id: model, revision: nil,
+                matching: ["*.json", "*.txt", "*.jinja"],
+                useLatest: false, progressHandler: { _ in })
+            let config = try ShardLoader.readConfig(modelDirectory: directory)
+            let tokenizer = try await #huggingFaceTokenizerLoader().load(from: directory)
+
+            print("waiting for \(minWorkers) worker(s) to join …")
+            while registry.count < minWorkers {
+                try await Task.sleep(nanoseconds: 500_000_000)
+            }
+
+            let workers = registry.all()
+            print("assigning \(config.hiddenLayers) layers across \(workers.count) worker(s)")
+            let pipeline = try ChatPipeline(
+                workers: workers, tokenizer: tokenizer, state: state,
+                model: model, totalLayers: config.hiddenLayers)
+            try pipeline.assignShards()
+
+            print("waiting for shards to load (workers may be downloading weights) …")
+            try await pipeline.waitUntilReady()
+            for device in state.snapshot().devices where device.layerStart != nil {
+                print("  \(device.info.name): layers \(device.layerStart!)..<\(device.layerEnd!)")
+            }
+            print("\ncluster ready. Type a prompt; empty line or ctrl-d quits.\n")
+
+            while true {
+                print("> ", terminator: "")
+                fflush(stdout)
+                guard let line = readLine(),
+                      !line.trimmingCharacters(in: .whitespaces).isEmpty
+                else { break }
+
+                do {
+                    _ = try await pipeline.respond(to: line, maxTokens: maxTokens) { segment in
+                        print(segment, terminator: "")
+                        fflush(stdout)
+                    }
+                    let stats = state.snapshot()
+                    print(String(format: "\n[%.1f tok/s]\n", stats.tokensPerSecond))
+                } catch {
+                    print("\ngeneration failed: \(error)")
+                    print("if a worker dropped, restart the workers and this coordinator\n")
+                }
+            }
+
+            for worker in registry.all() {
+                try? worker.sendControl(.goodbye)
+            }
+            print("bye")
+        } catch {
+            print("setup failed: \(error)")
+            exit(1)
+        }
     }
 
     // MARK: - Demo data
@@ -88,6 +190,7 @@ struct EdgeCoordinatorCLI {
         for (info, spec, used, ms) in devices {
             state.apply(.hello(info))
             state.assign(deviceID: info.id, spec: spec)
+            state.markReady(deviceID: info.id)
             state.apply(.metrics(.init(
                 id: info.id, usedMemory: used, millisecondsPerToken: ms)))
         }
@@ -105,55 +208,38 @@ struct EdgeCoordinatorCLI {
     }
 }
 
-/// Handles one worker connection: reads control frames and mirrors them into
-/// the cluster state until the peer disconnects.
-final class WorkerSession {
+/// Connected workers in join order. Rejoining workers (same id) replace
+/// their old entry.
+final class WorkerRegistry {
 
-    private let connection: FrameConnection
-    private let state: ClusterState
-    private var deviceID: String?
+    private let lock = NSLock()
+    private var handles: [WorkerHandle] = []
 
-    init(connection: FrameConnection, state: ClusterState) {
-        self.connection = connection
-        self.state = state
+    var count: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return handles.count
     }
 
-    func run() {
-        receiveNext()
+    func all() -> [WorkerHandle] {
+        lock.lock()
+        defer { lock.unlock() }
+        return handles
     }
 
-    private func receiveNext() {
-        connection.receiveFrame { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .failure:
-                self.disconnect()
-            case .success(let frame):
-                self.handle(frame)
-                self.receiveNext()
-            }
+    func add(_ handle: WorkerHandle) {
+        guard let id = handle.info?.id else { return }
+        lock.lock()
+        defer { lock.unlock() }
+        handles.removeAll { $0.info?.id == id && $0 !== handle }
+        if !handles.contains(where: { $0 === handle }) {
+            handles.append(handle)
         }
     }
 
-    private func handle(_ frame: TensorFrame) {
-        guard let message = try? frame.controlMessage() else { return }
-        switch message {
-        case .hello(let info):
-            deviceID = info.id
-            print("worker joined: \(info.name) [\(info.platform)/\(info.runtime)]")
-            state.apply(message)
-        case .goodbye:
-            disconnect()
-        default:
-            state.apply(message)
-        }
-    }
-
-    private func disconnect() {
-        if let deviceID {
-            print("worker left: \(deviceID)")
-            state.remove(deviceID: deviceID)
-        }
-        connection.cancel()
+    func remove(_ handle: WorkerHandle) {
+        lock.lock()
+        defer { lock.unlock() }
+        handles.removeAll { $0 === handle }
     }
 }

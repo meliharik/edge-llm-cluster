@@ -49,6 +49,21 @@ final class ClusterStateTests: XCTestCase {
         XCTAssertEqual(device.layerEnd, 15)
     }
 
+    func testReadyFlag() {
+        let state = ClusterState()
+        state.apply(.hello(phone()))
+        XCTAssertFalse(state.snapshot().devices[0].ready)
+
+        state.markReady(deviceID: "phone-1")
+        XCTAssertTrue(state.snapshot().devices[0].ready)
+    }
+
+    func testReadyForUnknownDeviceIsIgnored() {
+        let state = ClusterState()
+        state.markReady(deviceID: "ghost")
+        XCTAssertTrue(state.snapshot().devices.isEmpty)
+    }
+
     func testRemoveDropsDevice() {
         let state = ClusterState()
         state.apply(.hello(phone()))

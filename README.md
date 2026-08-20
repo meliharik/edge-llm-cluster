@@ -73,7 +73,7 @@ swift run edge-coordinator --demo
 | Phase | Goal | Status |
 |---|---|---|
 | 0: Feasibility | Split a model into layer shards, hand hidden states across a serialization boundary, prove token exact equality with the unsharded model on one machine | ✅ done, verified in CI: [`pipeline-proof`](Sources/PipelineProof) |
-| 1: First real cluster | Coordinator with discovery, worker sessions and web dashboard; Swift worker over TCP | 🔨 coordinator, dashboard, transport and worker CLI ready; chat loop wiring next |
+| 1: First real cluster | Coordinator with discovery, chat loop and web dashboard; Swift worker over TCP | 🔨 all pieces in place; first end to end run on real hardware is next |
 | 2: Many devices | Memory proportional allocation, a 7B or 8B model across three or more devices, failure handling | ⏳ planned |
 | 3: Demo polish | Token flow animation in the dashboard, side by side OOM comparison, demo video | ⏳ planned |
 | 4: Beyond Apple | Reference Android worker (Kotlin + llama.cpp) speaking the open protocol | ⏳ planned |

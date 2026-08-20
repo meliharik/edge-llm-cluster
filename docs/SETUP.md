@@ -70,6 +70,21 @@ swift run edge-coordinator --demo
 
 Open http://localhost:8080 in any browser on the network. The `--demo` flag seeds simulated devices so you can see the device cards, memory quota bars and live metrics without running any workers. Without the flag the coordinator advertises `_edgellm._tcp` and waits for real workers to connect.
 
+## 2c. Run a real cluster on one Mac
+
+Three terminals, all in the repo:
+
+```bash
+# terminal 1: the coordinator waits for two workers, then reads prompts from stdin
+swift run -c release edge-coordinator --min-workers 2
+
+# terminals 2 and 3: two workers on the same machine
+swift run -c release edge-worker --name worker-a --memory-gb 6
+swift run -c release edge-worker --name worker-b --memory-gb 6
+```
+
+The coordinator assigns each worker a layer range, waits for both shards to load (first run downloads the weights), then prints a `>` prompt. Type a question and watch the answer stream while the dashboard at http://localhost:8080 shows both workers, their memory and per token latency. Two workers on one machine share the same GPU, so this proves the plumbing rather than the memory win; the same commands on two machines on one Wi-Fi network are the real Phase 1 milestone.
+
 ## 3. Repository housekeeping
 
 - `Package.resolved` is committed on purpose so CI and contributors get identical dependency versions. If you intentionally bump dependencies, commit the updated file with the change.

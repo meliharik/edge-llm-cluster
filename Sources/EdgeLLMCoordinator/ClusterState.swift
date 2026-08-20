@@ -13,12 +13,14 @@ public final class ClusterState: @unchecked Sendable {
         public var layerEnd: Int?
         public var usedMemory: UInt64
         public var millisecondsPerToken: Double
+        public var ready: Bool
         public var lastSeen: Date
 
         public init(info: ControlMessage.DeviceInfo, now: Date) {
             self.info = info
             self.usedMemory = 0
             self.millisecondsPerToken = 0
+            self.ready = false
             self.lastSeen = now
         }
     }
@@ -77,9 +79,18 @@ public final class ClusterState: @unchecked Sendable {
             device.millisecondsPerToken = metrics.millisecondsPerToken
             device.lastSeen = now
             devices[metrics.id] = device
+        case .ready(let ready):
+            guard var device = devices[ready.id] else { return }
+            device.ready = true
+            device.lastSeen = now
+            devices[ready.id] = device
         case .reset, .goodbye:
             break
         }
+    }
+
+    public func markReady(deviceID: String) {
+        apply(.ready(.init(id: deviceID)))
     }
 
     public func assign(deviceID: String, spec: ShardSpec) {

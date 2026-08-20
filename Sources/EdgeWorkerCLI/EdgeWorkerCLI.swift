@@ -127,7 +127,18 @@ final class Worker {
             dropConnection()
             return
         }
+        // A reconnect keeps the shard resident; tell the new coordinator.
+        if shard != nil {
+            sendReady()
+        }
         receiveNext()
+    }
+
+    private func sendReady() {
+        guard let connection,
+              let frame = try? TensorFrame.control(.ready(.init(id: info.id)))
+        else { return }
+        connection.send(frame) { _ in }
     }
 
     private func dropConnection() {
@@ -171,7 +182,7 @@ final class Worker {
             caches = shard?.newCaches()
         case .goodbye:
             dropConnection()
-        case .hello, .metrics:
+        case .hello, .metrics, .ready:
             break
         }
     }
@@ -198,6 +209,7 @@ final class Worker {
                 self.shard = shard
                 self.caches = shard.newCaches()
                 print("shard loaded, \(gb(UInt64(Memory.activeMemory))) resident, ready")
+                self.sendReady()
             } catch {
                 print("could not load shard: \(error)")
                 self.shard = nil

@@ -40,12 +40,24 @@ let package = Package(
         ),
         .target(
             name: "EdgeLLMCoordinator",
-            dependencies: ["EdgeLLMKit"],
+            dependencies: [
+                "EdgeLLMKit",
+                "EdgeLLMTransport",
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+            ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
             name: "EdgeCoordinatorCLI",
-            dependencies: ["EdgeLLMKit", "EdgeLLMTransport", "EdgeLLMCoordinator"],
+            dependencies: [
+                "EdgeLLMKit",
+                "EdgeLLMTransport",
+                "EdgeLLMCoordinator",
+                .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
+                .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
+                .product(name: "HuggingFace", package: "swift-huggingface"),
+                .product(name: "Transformers", package: "swift-transformers"),
+            ],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(

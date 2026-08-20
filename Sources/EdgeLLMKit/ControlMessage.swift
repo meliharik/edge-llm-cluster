@@ -13,6 +13,10 @@ public enum ControlMessage: Codable, Equatable, Sendable {
     /// Sent by the coordinator to give a worker its layer range.
     case assignment(ShardAssignment)
 
+    /// Sent by a worker once its assigned shard is loaded and it can serve
+    /// inference frames.
+    case ready(Ready)
+
     /// Periodic worker report used by the coordinator and the dashboard.
     case metrics(DeviceMetrics)
 
@@ -68,6 +72,14 @@ public enum ControlMessage: Codable, Equatable, Sendable {
             self.layerEnd = layerEnd
             self.totalLayers = totalLayers
             self.nextWorker = nextWorker
+        }
+    }
+
+    public struct Ready: Codable, Equatable, Sendable {
+        public var id: String
+
+        public init(id: String) {
+            self.id = id
         }
     }
 

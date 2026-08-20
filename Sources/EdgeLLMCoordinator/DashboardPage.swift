@@ -42,6 +42,7 @@ enum DashboardPage {
       .card h2 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
       .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); }
       .dot.offline { background: var(--bad); }
+      .dot.loading { background: var(--warn); }
       .meta { color: var(--dim); font-size: 13px; margin: 4px 0 12px; }
       .row { display: flex; justify-content: space-between; font-size: 13.5px; margin-top: 8px; }
       .row .k { color: var(--dim); }
@@ -102,15 +103,17 @@ enum DashboardPage {
           const cls = pct > 90 ? "bad" : pct > 75 ? "warn" : "";
           const range = d.layerStart != null
             ? `layers ${d.layerStart} to ${d.layerEnd - 1}` : "no shard assigned";
+          const stateText = offline ? "offline" : d.ready ? "online" : "loading";
+          const dotClass = offline ? "offline" : d.ready ? "" : "loading";
           return `
             <div class="card">
-              <h2><span class="dot ${offline ? "offline" : ""}"></span>${d.info.name}</h2>
+              <h2><span class="dot ${dotClass}"></span>${d.info.name}</h2>
               <div class="meta">${platformLabel(d.info.platform)} &middot; ${d.info.runtime} &middot; ${range}</div>
               <div class="row"><span class="k">memory quota</span><span>${fmtGB(used)} / ${fmtGB(quota)}</span></div>
               <div class="bar"><i class="${cls}" style="width:${pct}%"></i></div>
               <div class="row"><span class="k">total memory</span><span>${fmtGB(d.info.totalMemory)}</span></div>
               <div class="row"><span class="k">per token</span><span>${(d.millisecondsPerToken || 0).toFixed(1)} ms</span></div>
-              <div class="row"><span class="k">status</span><span>${offline ? "offline" : "online"}</span></div>
+              <div class="row"><span class="k">status</span><span>${stateText}</span></div>
             </div>`;
         }).join("");
       }
