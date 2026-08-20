@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest! The project is early — the highest-value contributions right now are running the phases on real hardware and reporting numbers.
+Thanks for your interest! The project is early. The highest value contributions right now are running the phases on real hardware and reporting numbers, and building workers for new platforms against [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 ## Ground rules
 

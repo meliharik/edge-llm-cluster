@@ -2,7 +2,7 @@
 
 ## Scope & threat model
 
-edge-llm-cluster v0.x is designed for **trusted local networks only**. The transport is intentionally unauthenticated and unencrypted at this stage — any peer on the LAN advertising the `_edgellm._tcp` Bonjour service can join a cluster. Do not run it on networks you do not control. Peer authentication (PSK → TLS) is on the [roadmap](docs/ROADMAP.md) before any non-demo use.
+edge-llm-cluster v0.x is designed for **trusted local networks only**. The transport is intentionally unauthenticated and unencrypted at this stage, so any peer on the LAN advertising the `_edgellm._tcp` service can join a cluster. Do not run it on networks you do not control. Peer authentication (a pre-shared key, then TLS) is on the [roadmap](docs/ROADMAP.md) before any non-demo use.
 
 Reports that "the LAN protocol has no auth" are therefore known-by-design for v0.x. In-scope examples of real issues:
 

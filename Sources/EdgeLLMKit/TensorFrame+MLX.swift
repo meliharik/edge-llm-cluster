@@ -2,8 +2,8 @@ import Foundation
 import MLX
 
 // Bridging between MLXArray hidden states and the wire format. Hidden states
-// travel as float16 — for a 3B model that is hidden_dim ≈ 2048 × 2 bytes ≈ 4 KB
-// per generated token.
+// travel as float16, so for a 3B model that is hidden_dim (2048) x 2 bytes,
+// about 4 KB per generated token.
 
 extension TensorFrame {
 

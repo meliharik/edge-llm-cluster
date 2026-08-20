@@ -10,7 +10,9 @@ let package = Package(
     products: [
         .library(name: "EdgeLLMKit", targets: ["EdgeLLMKit"]),
         .library(name: "EdgeLLMTransport", targets: ["EdgeLLMTransport"]),
+        .library(name: "EdgeLLMCoordinator", targets: ["EdgeLLMCoordinator"]),
         .executable(name: "pipeline-proof", targets: ["PipelineProof"]),
+        .executable(name: "edge-coordinator", targets: ["EdgeCoordinatorCLI"]),
     ],
     dependencies: [
         // Pinned exactly: model/shard code mirrors the internals of this release.
@@ -35,6 +37,16 @@ let package = Package(
             dependencies: ["EdgeLLMKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        .target(
+            name: "EdgeLLMCoordinator",
+            dependencies: ["EdgeLLMKit"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
+            name: "EdgeCoordinatorCLI",
+            dependencies: ["EdgeLLMKit", "EdgeLLMTransport", "EdgeLLMCoordinator"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .executableTarget(
             name: "PipelineProof",
             dependencies: [
@@ -51,6 +63,11 @@ let package = Package(
         .testTarget(
             name: "EdgeLLMKitTests",
             dependencies: ["EdgeLLMKit"],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .testTarget(
+            name: "EdgeLLMCoordinatorTests",
+            dependencies: ["EdgeLLMCoordinator", "EdgeLLMKit"],
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

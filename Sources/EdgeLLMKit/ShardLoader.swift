@@ -18,7 +18,7 @@ public enum ShardLoader {
         public var description: String {
             switch self {
             case .unsupportedModelType(let type):
-                return "unsupported model_type '\(type)' — Phase 0 supports the qwen2 family"
+                return "unsupported model_type '\(type)': only the qwen2 family is supported for now"
             }
         }
     }

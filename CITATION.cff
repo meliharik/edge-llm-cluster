@@ -7,7 +7,7 @@ authors:
     given-names: "Melih"
 repository-code: "https://github.com/meliharik/edge-llm-cluster"
 url: "https://github.com/meliharik/edge-llm-cluster"
-abstract: "Distributed LLM inference across heterogeneous Apple devices (iPhone, iPad, Mac) on a local network, using MLX and pipeline parallelism to run models too large for any single device. Fully offline."
+abstract: "Distributed LLM inference across heterogeneous devices (phones, tablets, laptops) on a local network, using pipeline parallelism and an open cross platform wire protocol to run models too large for any single device. Fully offline, with a live web dashboard."
 keywords:
   - llm
   - distributed-inference

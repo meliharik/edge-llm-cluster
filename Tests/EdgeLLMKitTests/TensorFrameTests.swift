@@ -5,7 +5,7 @@ import XCTest
 final class TensorFrameTests: XCTestCase {
 
     private func makeHiddenFrame() -> TensorFrame {
-        // [1, 1, 8] float16 payload — 16 bytes of recognizable content.
+        // [1, 1, 8] float16 payload: 16 bytes of recognizable content.
         let payload = Data((0 ..< 16).map { UInt8($0) })
         return TensorFrame(
             kind: .hiddenState, dtype: .float16, seqPos: 42,

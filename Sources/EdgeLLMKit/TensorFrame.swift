@@ -11,9 +11,9 @@ import Foundation
 /// 5       1     kind (0 = hiddenState, 1 = token, 2 = control)
 /// 6       1     dtype (0 = float16, 1 = float32, 2 = bfloat16)
 /// 7       1     rank (number of dimensions, max 8)
-/// 8       4     seqPos    — sequence position of the first element
-/// 12      2     layerStart — producing shard's first layer
-/// 14      2     layerEnd   — producing shard's end layer (exclusive)
+/// 8       4     seqPos     sequence position of the first element
+/// 12      2     layerStart producing shard's first layer
+/// 14      2     layerEnd   producing shard's end layer (exclusive)
 /// 16      4*r   shape dims (Int32 each)
 /// 16+4r   4     payload byte count
 /// ...           payload bytes

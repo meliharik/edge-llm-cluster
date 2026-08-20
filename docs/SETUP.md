@@ -5,7 +5,7 @@ Everything in this repo was authored ahead of the first build. This page is the 
 ## Requirements
 
 - Apple Silicon Mac (MLX requires it)
-- Xcode 26 or newer (Swift 6.2+ toolchain — the `mlx-swift-lm` dependency requires it)
+- Xcode 26 or newer (the `mlx-swift-lm` dependency requires a Swift 6.2+ toolchain)
 - ~1 GB free disk for the Phase 0 test model
 - Network access on first build (Swift package resolution + Hugging Face model download)
 
@@ -16,13 +16,13 @@ cd edge-llm-cluster
 swift build
 ```
 
-The first build is slow (~10–20 min): it compiles MLX's Metal kernels once. Subsequent builds are fast.
+The first build is slow (10 to 20 minutes): it compiles MLX's Metal kernels once. Subsequent builds are fast.
 
 **If the build fails with an API mismatch** in `EdgeLLMKit` or `PipelineProof`: the code was written against `mlx-swift-lm` **3.31.4** exactly (pinned in `Package.swift`) by reading that tag's sources, but was not compiled at authoring time. Typical fixes are one-line signature adjustments; the upstream sources to compare against are:
 
-- `mlx-swift-lm/Libraries/MLXLLM/Models/Qwen2.swift` — the model our shard mirrors
-- `mlx-swift-lm/Libraries/MLXLMCommon/Load.swift` — the quantize-and-update pattern `ShardLoader` follows
-- `mlx-swift-lm/Libraries/MLXLMCommon/Documentation.docc/using.md` — the factory/macro usage `PipelineProof` follows
+- `mlx-swift-lm/Libraries/MLXLLM/Models/Qwen2.swift`, the model our shard mirrors
+- `mlx-swift-lm/Libraries/MLXLMCommon/Load.swift`, the quantize and update pattern `ShardLoader` follows
+- `mlx-swift-lm/Libraries/MLXLMCommon/Documentation.docc/using.md`, the factory and macro usage `PipelineProof` follows
 
 ## 2. Run the Phase 0 proof
 
@@ -62,9 +62,17 @@ Run the unit tests too:
 swift test
 ```
 
+## 2b. Try the dashboard
+
+```bash
+swift run edge-coordinator --demo
+```
+
+Open http://localhost:8080 in any browser on the network. The `--demo` flag seeds simulated devices so you can see the device cards, memory quota bars and live metrics without running any workers. Without the flag the coordinator advertises `_edgellm._tcp` and waits for real workers to connect.
+
 ## 3. Repository housekeeping
 
-- `Package.resolved` is committed on purpose — CI and contributors get identical dependency versions. If you intentionally bump dependencies, commit the updated file with the change.
+- `Package.resolved` is committed on purpose so CI and contributors get identical dependency versions. If you intentionally bump dependencies, commit the updated file with the change.
 - CI (`.github/workflows/ci.yml`) builds the package and runs the pure-Swift tests on a macOS runner; the badge in the README tracks `main`.
 - When a phase lands, tag it (`git tag v0.x.0 && git push --tags`) and add a matching entry to `CHANGELOG.md`.
 

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Something broke — a build failure, a wrong answer, a crash
+about: Something broke, like a build failure, a wrong answer or a crash
 labels: bug
 ---
 

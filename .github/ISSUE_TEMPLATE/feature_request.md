@@ -8,7 +8,7 @@ labels: enhancement
 <!-- What can't you do today, or what is awkward? -->
 
 **Proposed solution**
-<!-- What you'd like to happen. Check docs/ROADMAP.md first — it may already be planned. -->
+<!-- What you'd like to happen. Check docs/ROADMAP.md first, it may already be planned. -->
 
 **Alternatives considered**
 

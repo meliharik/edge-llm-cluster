@@ -24,9 +24,9 @@ final class ProgressReporter: @unchecked Sendable {
 
 /// Phase 0 feasibility proof, single device, three runs of the same prompt:
 ///
-///   1. upstream  — mlx-swift-lm's own Qwen2 stack (ground truth text)
-///   2. reference — our shard implementation covering all layers at once
-///   3. pipeline  — the model split into two shards; every hidden state
+///   1. upstream:  mlx-swift-lm's own Qwen2 stack (ground truth text)
+///   2. reference: our shard implementation covering all layers at once
+///   3. pipeline:  the model split into two shards; every hidden state
 ///                  crossing the shard boundary is serialized to the wire
 ///                  format and decoded back, exactly like the network path
 ///
@@ -168,7 +168,7 @@ struct PipelineProof {
             : "✗ token mismatch between reference and pipeline")
         print(textMatchesUpstream
             ? "✓ our implementation agrees with upstream mlx-swift-lm output"
-            : "⚠ our text differs from upstream — inspect outputs above (minor float divergence is possible)")
+            : "⚠ our text differs from upstream, inspect outputs above (minor float divergence is possible)")
 
         if !tokensMatch { exit(1) }
     }

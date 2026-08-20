@@ -6,7 +6,7 @@ import MLXLMCommon
 ///
 /// Each shard keeps its own KV caches; only hidden states cross shard
 /// boundaries. The `link` hook intercepts every hidden state handed from one
-/// shard to the next — the single-process proof uses it to round-trip tensors
+/// shard to the next: the single-process proof uses it to round-trip tensors
 /// through the wire codec, and the networked runtime replaces it with an
 /// actual socket.
 public enum PipelineGenerator {
