@@ -57,6 +57,8 @@ flowchart LR
 
 The coordinator serves a live dashboard on the local network: every connected device with its platform and runtime, memory quota and current usage, assigned layer range, per token latency, online state, plus cluster level tokens per second. It is a single self-contained page, viewable from any browser on the network, phones included.
 
+![Cluster dashboard showing four devices, one of them Android, with memory quota bars, layer assignments and per token latency](docs/assets/dashboard.png)
+
 Try it right now without any workers:
 
 ```bash

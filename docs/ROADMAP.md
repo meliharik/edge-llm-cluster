@@ -43,8 +43,13 @@ The riskiest assumption tested first: can we split an MLX model by layer range a
 
 ## Phase 4: beyond Apple
 
-- [ ] Reference Android worker: Kotlin, `NsdManager` discovery, llama.cpp partial layer execution via the C API, GGUF checkpoints of the same base model
-- [ ] Linux worker (llama.cpp, Avahi)
+The strategy is one portable worker core, thin platform shells, and CI doing all the packaging. Nothing is built by hand per platform.
+
+- [ ] Portable `edge-worker` core in C++ on llama.cpp: mDNS registration, the frame protocol, partial layer execution via the llama.cpp C API, GGUF checkpoints of the same base model. One codebase covers Android, Linux and Windows; only packaging differs.
+- [ ] Desktop worker first (Linux and Windows CLI): the easiest llama.cpp target, used to prove mixed runtime numerics before touching mobile
+- [ ] Android shell: a small Kotlin app around the same core (JNI), discovery through `NsdManager`, distributed as an APK on GitHub Releases for sideloading. Play Store only if the project ever needs it.
+- [ ] Release workflow: a GitHub Actions matrix that builds and attaches all artifacts (APK, Linux and Windows binaries) to every tag, the same way llama.cpp ships its own releases
+- [ ] Early testing shortcut before the APK exists: run the Linux CLI worker on Android inside Termux
 - [ ] Mixed runtime validation suite: text level agreement and perplexity sanity across MLX and llama.cpp shards
 
 ## Later / ideas
